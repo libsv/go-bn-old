@@ -2,17 +2,39 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/libsv/go-bn"
 )
 
 func main() {
-	c := bn.NewClient("http://localhost:18332")
+	c := bn.NewNodeClient(
+		bn.WithHost("http://localhost:18332"),
+		bn.WithCreds("bitcoin", "bitcoin"),
+	)
 
-	hash, err := c.BestBlockHash(context.Background())
-	if err != nil {
+	if err := c.Ping(context.TODO()); err != nil {
 		panic(err)
 	}
-	fmt.Println(hash)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			obj, err := c.SetExcessiveBlock(context.TODO(), 400000000)
+			if err != nil {
+				panic(err)
+			}
+			bb, err := json.MarshalIndent(obj, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(string(bb))
+		}()
+	}
+
+	wg.Wait()
 }

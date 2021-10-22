@@ -1,105 +1,53 @@
 package bn
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"net/http"
+	"reflect"
 	"time"
 
-	"github.com/libsv/go-bc"
-	"github.com/libsv/go-bn/models"
-	"github.com/pkg/errors"
+	"github.com/libsv/go-bn/config"
+	"github.com/libsv/go-bn/service"
 )
 
-// Default jsonrpc fields.
-const (
-	ID      = "gobn"
-	JSONRpc = "1.0"
-)
+type NodeClient interface {
+	BlockChainClient
+	ControlClient
+	MiningClient
+	NetworkClient
+	TransactionClient
+}
 
-type Client interface {
-	Info(ctx context.Context) (*models.Info, error)
-	BestBlockHash(ctx context.Context) (string, error)
-	Block(ctx context.Context, hash string, opts models.BlockOptions) (bc.Block, error)
-	BlockByHeight(ctx context.Context, height int, opts models.BlockOptions)
+type positionalOptionalArgs interface {
+	Args() []interface{}
 }
 
 type client struct {
-	host string
-	c    *http.Client
+	rpc service.RPC
 }
 
-func NewClient(host string, oo ...optFunc) Client {
-	c := &client{
-		c:    &http.Client{Timeout: 30 * time.Second},
-		host: host,
+func NewNodeClient(oo ...optFunc) NodeClient {
+	opts := &clientOpts{
+		timeout:  30 * time.Second,
+		host:     "http://localhost:8332",
+		username: "bitcoin",
+		password: "bitcoin",
 	}
 	for _, o := range oo {
-		o(c)
+		o(opts)
 	}
-	return c
+	return &client{
+		rpc: service.NewRPC(&config.RPC{
+			Username: opts.username,
+			Password: opts.password,
+			Host:     opts.host,
+		}, &http.Client{Timeout: opts.timeout}),
+	}
 }
 
-func (c *client) Info(ctx context.Context) (*models.Info, error) {
-	var resp models.Info
-	return &resp, c.performRPC(ctx, "getinfo", &resp)
-}
-
-func (c *client) BestBlockHash(ctx context.Context) (string, error) {
-	var resp string
-	return resp, c.performRPC(ctx, "getbestblockhash", &resp)
-}
-
-func (c *client) BlockHash(ctx context.Context, hash string, opts models.BlockOptions) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (c *client) BlockByHeight(ctx context.Context, height int, opts models.BlockOptions) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (c *client) performRPC(ctx context.Context, method string, out interface{}, params ...interface{}) error {
-	data, err := json.Marshal(&models.Request{
-		ID:      ID,
-		JSONRpc: JSONRpc,
-		Method:  method,
-		Params:  params,
-	})
-	if err != nil {
-		return err
+func (c *client) argsFor(p positionalOptionalArgs, args ...interface{}) []interface{} {
+	if reflect.ValueOf(p).IsNil() {
+		return args
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		c.host,
-		bytes.NewReader(data),
-	)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth("bitcoin", "bitcoin")
-	req.Header.Add("Content-Type", "text/plain")
-
-	resp, err := c.c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	reply := models.Response{
-		Result: out,
-	}
-	if err = json.NewDecoder(resp.Body).Decode(&reply); err != nil {
-		return errors.Wrapf(err, "error decoding response")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return reply.Error
-	}
-
-	return nil
+	return append(args, p.Args()...)
 }

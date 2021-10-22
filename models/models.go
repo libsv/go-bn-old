@@ -1,10 +1,7 @@
 package models
 
 import (
-	"errors"
 	"fmt"
-
-	validator "github.com/theflyingcodr/govalidator"
 )
 
 type blockVerbosity string
@@ -14,6 +11,14 @@ const (
 	VerbosityDecodeHeader            blockVerbosity = "DECODE_HEADER"
 	VerbosityDecodeTransactions      blockVerbosity = "DECODE_TRANSACTIONS"
 	VerbosityDecodeHeaderAndCoinbase blockVerbosity = "DECODE_HEADER_AND_COINBASE"
+)
+
+type merkleProofTargetType string
+
+const (
+	MerkleProofTargetTypeHash       merkleProofTargetType = "hash"
+	MerkleProofTargetTypeHeader     merkleProofTargetType = "header"
+	MerkleProofTargetTypeMerkleRoot merkleProofTargetType = "merkleroot"
 )
 
 type Request struct {
@@ -37,18 +42,45 @@ func (e Error) Error() string {
 	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
 
-type BlockOptions struct {
-	Verbosity blockVerbosity
+type OptsChainTxStats struct {
+	NumBlocks uint32
+	BlockHash string
 }
 
-func (b *BlockOptions) Validate() error {
-	return validator.New().Validate("verbosity", func() error {
-		switch b.Verbosity {
-		case "", VerbosityRawBlock, VerbosityDecodeHeader,
-			VerbosityDecodeTransactions, VerbosityDecodeHeaderAndCoinbase:
-			return nil
-		}
+func (o *OptsChainTxStats) Args() []interface{} {
+	aa := []interface{}{o.NumBlocks}
+	if o.BlockHash != "" {
+		aa = append(aa, o.BlockHash)
+	}
+	return aa
+}
 
-		return errors.New("invalid value")
-	}).Err()
+type OptsMerkleProof struct {
+	FullTx     bool
+	TargetType merkleProofTargetType
+}
+
+func (o *OptsMerkleProof) Args() []interface{} {
+	aa := []interface{}{o.FullTx}
+	if o.TargetType != "" {
+		aa = append(aa, o.TargetType)
+	}
+
+	return aa
+}
+
+type OptsLegacyMerkleProof struct {
+	BlockHash string
+}
+
+func (o *OptsLegacyMerkleProof) Args() []interface{} {
+	return []interface{}{o.BlockHash}
+}
+
+type OptsGenerate struct {
+	MaxTries uint32
+}
+
+func (o *OptsGenerate) Args() []interface{} {
+	return []interface{}{o.MaxTries}
 }
