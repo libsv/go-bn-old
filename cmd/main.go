@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/libsv/go-bn"
+	"github.com/libsv/go-bt/v2"
 )
 
 func main() {
@@ -15,16 +16,15 @@ func main() {
 		bn.WithCreds("bitcoin", "bitcoin"),
 	)
 
-	if err := c.Ping(context.TODO()); err != nil {
-		panic(err)
-	}
-
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			obj, err := c.SetExcessiveBlock(context.TODO(), 400000000)
+			tx := bt.NewTx()
+			tx.AddP2PKHOutputFromAddress("mpzLdVLZhbRXxYpaT8YcHntWb2tyPJvUnz", 123456700)
+
+			obj, err := c.FundRawTransaction(context.TODO(), tx, nil)
 			if err != nil {
 				panic(err)
 			}

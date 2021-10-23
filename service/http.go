@@ -106,5 +106,11 @@ func (h *rpc) do(ctx context.Context, r request, out interface{}) error {
 		return reply.Error
 	}
 
+	if v, ok := out.(interface {
+		PostProcess() error
+	}); ok {
+		return v.PostProcess()
+	}
+
 	return nil
 }

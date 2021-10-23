@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/libsv/go-bt/v2"
+	"github.com/libsv/go-bt/v2/bscript"
+	"github.com/libsv/go-bt/v2/sighash"
 )
 
 type Output struct {
@@ -59,4 +61,91 @@ type OptsOutput struct {
 
 func (o *OptsOutput) Args() []interface{} {
 	return []interface{}{o.IncludeMempool}
+}
+
+type ParamsCreateRawTransaction struct {
+	Outputs []*bt.Output
+	mainnet bool
+}
+
+func (p *ParamsCreateRawTransaction) Args() []interface{} {
+	outputs := make(map[string]float64, len(p.Outputs))
+	for _, o := range p.Outputs {
+		pkh, err := o.LockingScript.PublicKeyHash()
+		if err != nil {
+			outputs["invalid locking script"] = float64(o.Satoshis) / 100000000
+			continue
+		}
+		addr, err := bscript.NewAddressFromPublicKeyHash(pkh, p.mainnet)
+		if err != nil {
+			outputs["invalid locking script"] = float64(o.Satoshis) / 100000000
+		}
+		outputs[addr.AddressString] = float64(o.Satoshis) / 100000000
+	}
+
+	return []interface{}{outputs}
+}
+
+func (p *ParamsCreateRawTransaction) SetIsMainnet(b bool) {
+	p.mainnet = b
+}
+
+type FundTransaction struct {
+	Hex            string `json:"hex"`
+	Fee            uint64 `json:"fee"`
+	ChangePosition int    `json:"changeposition"`
+	Tx             *bt.Tx
+}
+
+func (f *FundTransaction) PostProcess() error {
+	var err error
+	f.Tx, err = bt.NewTxFromString(f.Hex)
+	return err
+}
+
+type OptsFundRawTransaction struct {
+	ChangeAddress          string   `json:"changeAddress,omitempty"`
+	ChangePosition         int      `json:"changePosition,omitempty"`
+	IncludeWatching        bool     `json:"includeWatching,omitempty"`
+	LockUnspents           bool     `json:"lockUnspents,omitempty"`
+	ReserveChangeKey       *bool    `json:"reserveChangeKey,omitempty"`
+	FeeRate                uint64   `json:"feeRate,omitempty"`
+	SubtractFeeFromOutputs []uint64 `json:"subtractFeeFromOutputs,omitempty"`
+}
+
+func (o *OptsFundRawTransaction) Args() []interface{} {
+	return []interface{}{o}
+}
+
+type SendRawTransaction struct {
+	Hex string
+	Tx  *bt.Tx
+}
+
+func (s *SendRawTransaction) PostProcess() error {
+	var err error
+	s.Tx, err = bt.NewTxFromString(s.Hex)
+	return err
+}
+
+type OptsSignRawTransaction struct {
+	PreviousTxs []*bt.Tx
+	PrivateKeys []string
+	SigHashType sighash.Flag
+}
+
+func (o *OptsSignRawTransaction) Args() []interface{} {
+	aa := []interface{}{""}
+	if len(o.PreviousTxs) > 0 {
+	}
+	return nil
+}
+
+type OptsSendRawTransaction struct {
+	AllowHighFees bool
+	CheckFee      bool
+}
+
+func (o *OptsSendRawTransaction) Args() []interface{} {
+	return []interface{}{o.AllowHighFees, !o.CheckFee}
 }

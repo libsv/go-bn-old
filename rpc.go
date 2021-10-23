@@ -22,15 +22,17 @@ type positionalOptionalArgs interface {
 }
 
 type client struct {
-	rpc service.RPC
+	rpc       service.RPC
+	isMainnet bool
 }
 
 func NewNodeClient(oo ...optFunc) NodeClient {
 	opts := &clientOpts{
-		timeout:  30 * time.Second,
-		host:     "http://localhost:8332",
-		username: "bitcoin",
-		password: "bitcoin",
+		timeout:   30 * time.Second,
+		host:      "http://localhost:8332",
+		username:  "bitcoin",
+		password:  "bitcoin",
+		isMainnet: false,
 	}
 	for _, o := range oo {
 		o(opts)

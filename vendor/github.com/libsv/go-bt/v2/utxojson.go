@@ -11,6 +11,8 @@ type nodeUTXOWrapper struct {
 	*UTXO
 }
 
+type nodeUTXOsWrapper UTXOs
+
 type utxoJSON struct {
 	TxID          string `json:"txid"`
 	Vout          uint32 `json:"vout"`
@@ -91,5 +93,32 @@ func (n *nodeUTXOWrapper) UnmarshalJSON(b []byte) error {
 	n.UTXO.LockingScript = ls
 	n.UTXO.TxID = txID
 
+	return nil
+}
+
+// MarshalJSON will marshal a transaction that has been marshalled with this library.
+func (nn nodeUTXOsWrapper) MarshalJSON() ([]byte, error) {
+	utxos := make([]*nodeUTXOWrapper, len(nn))
+	for i, n := range nn {
+		utxos[i] = n.NodeJSON().(*nodeUTXOWrapper)
+	}
+	return json.Marshal(utxos)
+}
+
+// UnmarshalJSON will unmarshal a transaction that has been marshalled with this library.
+func (nn *nodeUTXOsWrapper) UnmarshalJSON(b []byte) error {
+	var jj []json.RawMessage
+	if err := json.Unmarshal(b, &jj); err != nil {
+		return err
+	}
+
+	*nn = make(nodeUTXOsWrapper, 0)
+	for _, j := range jj {
+		var utxo UTXO
+		if err := json.Unmarshal(j, utxo.NodeJSON()); err != nil {
+			return err
+		}
+		*nn = append(*nn, &utxo)
+	}
 	return nil
 }

@@ -5,11 +5,12 @@ import "time"
 type optFunc func(c *clientOpts)
 
 type clientOpts struct {
-	timeout  time.Duration
-	host     string
-	username string
-	password string
-	cache    bool
+	timeout   time.Duration
+	host      string
+	username  string
+	password  string
+	cache     bool
+	isMainnet bool
 }
 
 func WithTimeout(seconds time.Duration) optFunc {
@@ -34,5 +35,11 @@ func WithCreds(username, password string) optFunc {
 	return func(c *clientOpts) {
 		c.username = username
 		c.password = password
+	}
+}
+
+func WithMainnet() optFunc {
+	return func(c *clientOpts) {
+		c.isMainnet = true
 	}
 }

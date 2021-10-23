@@ -14,8 +14,14 @@ type UTXO struct {
 	Satoshis      uint64
 }
 
+type UTXOs []*UTXO
+
 func (u *UTXO) NodeJSON() interface{} {
 	return &nodeUTXOWrapper{UTXO: u}
+}
+
+func (u *UTXOs) NodeJSON() interface{} {
+	return (*nodeUTXOsWrapper)(u)
 }
 
 func (u *UTXO) TxIDStr() string {
