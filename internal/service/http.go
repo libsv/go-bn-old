@@ -19,11 +19,6 @@ const (
 	JSONRpc = "1.0"
 )
 
-const (
-	HeaderKeyContentType = "Content-Type"
-	ContextTypeTextPlain = "text/plain"
-)
-
 var (
 	ErrRPCQuery = errors.New("failed to perform rpc query")
 )
@@ -68,7 +63,7 @@ func (h *rpc) do(ctx context.Context, r request, out interface{}) error {
 			return nil, err
 		}
 		req.SetBasicAuth(h.cfg.Username, h.cfg.Password)
-		req.Header.Add(HeaderKeyContentType, ContextTypeTextPlain)
+		req.Header.Add("Content-Type", "text/plain")
 
 		resp, err := h.c.Do(req)
 		if err != nil {

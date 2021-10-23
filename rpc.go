@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/libsv/go-bn/config"
-	"github.com/libsv/go-bn/service"
+	"github.com/libsv/go-bn/internal/service"
 )
 
 type NodeClient interface {
@@ -15,6 +15,8 @@ type NodeClient interface {
 	MiningClient
 	NetworkClient
 	TransactionClient
+	UtilClient
+	WalletClient
 }
 
 type positionalOptionalArgs interface {
@@ -28,21 +30,27 @@ type client struct {
 
 func NewNodeClient(oo ...optFunc) NodeClient {
 	opts := &clientOpts{
-		timeout:   30 * time.Second,
-		host:      "http://localhost:8332",
-		username:  "bitcoin",
-		password:  "bitcoin",
-		isMainnet: false,
+		timeout:  30 * time.Second,
+		host:     "http://localhost:8332",
+		username: "bitcoin",
+		password: "bitcoin",
 	}
 	for _, o := range oo {
 		o(opts)
 	}
+
+	rpc := service.NewRPC(&config.RPC{
+		Username: opts.username,
+		Password: opts.password,
+		Host:     opts.host,
+	}, &http.Client{Timeout: opts.timeout})
+	if opts.cache {
+		rpc = service.NewCache(rpc)
+	}
+
 	return &client{
-		rpc: service.NewRPC(&config.RPC{
-			Username: opts.username,
-			Password: opts.password,
-			Host:     opts.host,
-		}, &http.Client{Timeout: opts.timeout}),
+		rpc:       rpc,
+		isMainnet: opts.isMainnet,
 	}
 }
 

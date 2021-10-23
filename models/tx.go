@@ -90,17 +90,10 @@ func (p *ParamsCreateRawTransaction) SetIsMainnet(b bool) {
 	p.mainnet = b
 }
 
-type FundTransaction struct {
-	Hex            string `json:"hex"`
+type FundRawTransaction struct {
 	Fee            uint64 `json:"fee"`
 	ChangePosition int    `json:"changeposition"`
 	Tx             *bt.Tx
-}
-
-func (f *FundTransaction) PostProcess() error {
-	var err error
-	f.Tx, err = bt.NewTxFromString(f.Hex)
-	return err
 }
 
 type OptsFundRawTransaction struct {
@@ -128,17 +121,33 @@ func (s *SendRawTransaction) PostProcess() error {
 	return err
 }
 
+type SignedRawTransaction struct {
+	Tx       *bt.Tx `json:"tx"`
+	Complete bool   `json:"complete"`
+	Errors   []struct {
+		TxID            string `json:"txid"`
+		Vout            int    `json:"vout"`
+		UnlockingScript string `json:"scriptSig"`
+		Sequence        uint32 `json:"sequence"`
+		Error           string `json:"error"`
+	} `json:"errors"`
+}
+
 type OptsSignRawTransaction struct {
-	PreviousTxs []*bt.Tx
+	From        bt.UTXOs
 	PrivateKeys []string
 	SigHashType sighash.Flag
 }
 
 func (o *OptsSignRawTransaction) Args() []interface{} {
-	aa := []interface{}{""}
-	if len(o.PreviousTxs) > 0 {
+	aa := []interface{}{[]interface{}{}, []interface{}{}}
+	if o.From != nil && len(o.From) > 0 {
+		aa[0] = o.From.NodeJSON()
 	}
-	return nil
+	if o.PrivateKeys != nil && len(o.PrivateKeys) > 0 {
+		aa[0] = o.PrivateKeys
+	}
+	return append(aa, o.SigHashType.String())
 }
 
 type OptsSendRawTransaction struct {

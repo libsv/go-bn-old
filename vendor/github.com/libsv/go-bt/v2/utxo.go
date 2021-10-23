@@ -8,10 +8,11 @@ import (
 
 // UTXO an unspent transaction output, used for creating inputs
 type UTXO struct {
-	TxID          []byte
-	Vout          uint32
-	LockingScript *bscript.Script
-	Satoshis      uint64
+	TxID           []byte
+	Vout           uint32
+	LockingScript  *bscript.Script
+	Satoshis       uint64
+	SequenceNumber uint32
 }
 
 type UTXOs []*UTXO
